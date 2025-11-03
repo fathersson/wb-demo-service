@@ -1,0 +1,26 @@
+# Binaries
+/bin/
+/build/
+*.exe
+*.out
+*.dll
+*.so
+
+# Go modules
+go.sum
+
+# Environment
+.env
+.env.local
+.DS_Store
+
+# IDE configs
+.idea/
+.vscode/
+
+# Docker volumes / data
+/pgdata/
+*.log
+
+# Temporary files
+*.tmp
