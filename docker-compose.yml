@@ -84,7 +84,7 @@ volumes:
   pgdata:
 #   pgadmin_data:
 #   pgadmin_sessions:
-  # kafka_ui_data:
+# kafka_ui_data:
   kafka_data:
   zookeeper-data:
   zookeeper-log:
