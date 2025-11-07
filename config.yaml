@@ -1,0 +1,16 @@
+http_server:
+  address: "0.0.0.0:8082"
+  # host: "0.0.0.0"
+  # port: "8082"
+
+database:
+  host: "postgres"
+  port: "5432"
+  user: "wb_user"
+  name: "wb_orders"
+
+kafka:
+  # host: "wb_kafka"
+  # port: "9092"
+  broker: "kafka:9092"
+  zookeeper: "wb_zookeeper:2181"
