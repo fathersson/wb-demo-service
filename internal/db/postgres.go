@@ -26,6 +26,6 @@ func Connect(cfg *config.DatabaseConfig) *sql.DB {
 		log.Fatal(err)
 	}
 
-	log.Println("Successfully connected!")
+	log.Println("Соединение с базой данных установлено")
 	return db
 }
