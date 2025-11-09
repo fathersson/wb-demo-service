@@ -15,7 +15,7 @@ kafka:
   # host: "wb_kafka"
   # port: "9092"
   # broker: "kafka:9092" # используем если будем запускать приложение через docker-compose
-  broker: "localhost:9092" # используем если будем запускать приложение локально
+  broker: "localhost:29092" # используем если будем запускать приложение локально
   zookeeper: "wb_zookeeper:2181"
   topic: "orders"
   groupID: "my_group"

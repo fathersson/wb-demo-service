@@ -15,14 +15,14 @@ func main() {
 
 	// 2. Соединение с бд
 	db := db.Connect(&cfg.Database)
-	db.Close()
+	defer db.Close()
 
 	// 3. Подключение к Kafka
 	reader := kafka.NewReader(cfg.Kafka)
 	defer reader.Close()
 
 	// 4. Читаем сообщения не блокируя основной поток
-	go kafka.ConsumeMessages(reader)
+	go kafka.ConsumeMessages(reader, db)
 
 	// 5. Создаем обьект http.Server
 	srv := server.NewServer(cfg.HttpServer)

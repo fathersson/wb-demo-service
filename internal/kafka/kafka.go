@@ -15,11 +15,12 @@ package kafka
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
 	"log"
 
 	"github.com/fathersson/wb-demo-service/internal/config"
 	"github.com/fathersson/wb-demo-service/internal/models"
+	"github.com/fathersson/wb-demo-service/internal/repository"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -35,22 +36,16 @@ func NewReader(cfg config.KafkaConfig) *kafka.Reader {
 }
 
 // ConsumeMessages читает сообщения из Kafka
-func ConsumeMessages(reader *kafka.Reader) {
+func ConsumeMessages(reader *kafka.Reader, db *sql.DB) {
+	var order models.Order
 	ctx := context.Background()
 
 	// Читаем сообщения
 	for {
-		msg, err := reader.ReadMessage(ctx)
+		msg, err := reader.FetchMessage(ctx)
 		if err != nil {
-			panic(err)
-		}
-
-		// Парсим JSON
-		var order models.Order
-		err = json.Unmarshal(msg.Value, &order)
-		if err != nil {
-			log.Println("Ошибка парсинга JSON:", err)
-			continue // пропускаем это сообщение, чтобы не коммитить некорректные данные
+			log.Println("Ошибка чтения заказа:", err)
+			continue
 		}
 
 		// Проверка корректности order_uid
@@ -61,8 +56,19 @@ func ConsumeMessages(reader *kafka.Reader) {
 		// Сообщение корректное
 		log.Printf("Получили заказ %s из %s", order.OrderUID, order.Delivery.City)
 
-		// Печатаем сообщение
-		// fmt.Printf("message at offset %d: %s = %s\n", msg.Offset, string(msg.Key), string(msg.Value))
+		// // Начинаем транзакцию бд
+		// tx, err := db.BeginTx(ctx, nil)
+		// if err != nil {
+		// 	log.Println("Не удалось начать транзакцию:", err)
+		// 	continue
+		// }
+
+		// проводим транзакцию в бд
+		err = repository.SaveOrder(ctx, db, order)
+		if err != nil {
+			log.Println("Ошибка сохранения заказа:", err)
+			continue
+		}
 
 		// Посылаем сигнал в Kafka, что мы обработали его сообщение
 		err = reader.CommitMessages(ctx, msg)
