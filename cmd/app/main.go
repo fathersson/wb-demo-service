@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/fathersson/wb-demo-service/internal/cache"
 	"github.com/fathersson/wb-demo-service/internal/config"
 	"github.com/fathersson/wb-demo-service/internal/db"
 	"github.com/fathersson/wb-demo-service/internal/kafka"
@@ -16,6 +17,9 @@ func main() {
 	// 2. Соединение с бд
 	db := db.Connect(&cfg.Database)
 	defer db.Close()
+
+	// Создаем кэш
+	cache := cache.NewCache()
 
 	// 3. Подключение к Kafka
 	reader := kafka.NewReader(cfg.Kafka)
