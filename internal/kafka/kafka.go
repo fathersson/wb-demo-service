@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"log"
 
+	"github.com/fathersson/wb-demo-service/internal/cache"
 	"github.com/fathersson/wb-demo-service/internal/config"
 	"github.com/fathersson/wb-demo-service/internal/models"
 	"github.com/fathersson/wb-demo-service/internal/repository"
@@ -36,7 +37,7 @@ func NewReader(cfg config.KafkaConfig) *kafka.Reader {
 }
 
 // ConsumeMessages читает сообщения из Kafka
-func ConsumeMessages(reader *kafka.Reader, db *sql.DB) {
+func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache) {
 	var order models.Order
 	ctx := context.Background()
 
@@ -56,19 +57,15 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB) {
 		// Сообщение корректное
 		log.Printf("Получили заказ %s из %s", order.OrderUID, order.Delivery.City)
 
-		// // Начинаем транзакцию бд
-		// tx, err := db.BeginTx(ctx, nil)
-		// if err != nil {
-		// 	log.Println("Не удалось начать транзакцию:", err)
-		// 	continue
-		// }
-
 		// проводим транзакцию в бд
 		err = repository.SaveOrder(ctx, db, order)
 		if err != nil {
 			log.Println("Ошибка сохранения заказа:", err)
 			continue
 		}
+
+		// Добавляем сообщение в кэш
+		cache.SetCache(order.OrderUID, order)
 
 		// Посылаем сигнал в Kafka, что мы обработали его сообщение
 		err = reader.CommitMessages(ctx, msg)
