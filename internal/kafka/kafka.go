@@ -16,6 +16,7 @@ package kafka
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 
 	"github.com/fathersson/wb-demo-service/internal/cache"
@@ -49,6 +50,14 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache) {
 			continue
 		}
 
+		// Парсим JSON
+		err = json.Unmarshal(msg.Value, &order)
+		if err != nil {
+			log.Println("Ошибка парсинга JSON:", err)
+			// Пропускаем некорректное сообщение, не коммитим
+			continue
+		}
+
 		// Проверка корректности order_uid
 		if order.OrderUID == "" {
 			log.Println("Пустой order_uid, пропускаем")
@@ -72,5 +81,7 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache) {
 		if err != nil {
 			panic(err)
 		}
+		// Принтуем в консоль
+		log.Printf("Консьюмер кафки обработал заказ %s", order.OrderUID)
 	}
 }
