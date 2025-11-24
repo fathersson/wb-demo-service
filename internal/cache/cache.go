@@ -28,7 +28,7 @@ func (c *Cache) SetCache(orderUID string, order models.Order) {
 func (c *Cache) GetCache(orderUID string) (models.Order, bool) {
 	c.mu.RLock()
 	order, ok := c.Orders[orderUID]
-	c.mu.Unlock()
+	c.mu.RUnlock()
 
 	return order, ok
 }

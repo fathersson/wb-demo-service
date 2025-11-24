@@ -34,7 +34,7 @@ func main() {
 	go kafka.ConsumeMessages(reader, db, cache)
 
 	// 5. Создаем обьект http.Server
-	srv := server.NewServer(cfg.HttpServer, cache)
+	srv := server.NewServer(cfg.HttpServer, cache, db)
 	log.Println("Сервер будет запущен на", cfg.HttpServer.Port)
 
 	// 6. Запускаем сервер

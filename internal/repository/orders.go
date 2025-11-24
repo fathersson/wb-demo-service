@@ -80,83 +80,57 @@ func SaveOrder(ctx context.Context, db *sql.DB, order models.Order) error {
 	return nil
 }
 
-// // Загружает кэш из базы при старте
-// func NewCacheFromDB(db *sql.DB, cache *cache.Cache) *cache.Cache {
+// Берем заказ по order_uid из бд
+func GetOrderById(ctx context.Context, db *sql.DB, orderUID string) (models.Order, error) {
+	var order models.Order
 
-// 	rows, err := db.Query("SELECT order_uid, track_number, entry, locale, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard FROM orders")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		return nil
-// 	}
-// 	defer rows.Close()
+	// Запрос в бд, данные таблицы orders
+	err := db.QueryRowContext(ctx, "SELECT * FROM orders WHERE order_uid = $1", orderUID).Scan(
+		&order.OrderUID, &order.TrackNumber, &order.Entry, &order.Locale,
+		&order.CustomerID, &order.DeliveryService, &order.ShardKey, &order.SmID,
+		&order.DateCreated, &order.OofShard,
+	)
+	if err != nil {
+		return models.Order{}, err
+	}
 
-// 	for rows.Next() {
-// 		mu := &sync.Mutex{}
-// 		var order models.Order
+	// Запрос в бд, данные таблицы delivery
+	err = db.QueryRowContext(ctx, "SELECT * FROM delivery WHERE order_uid = $1", orderUID).Scan(
+		&order.Delivery.Name, &order.Delivery.Phone, &order.Delivery.Zip,
+		&order.Delivery.City, &order.Delivery.Address, &order.Delivery.Region,
+		&order.Delivery.Email,
+	)
+	if err != nil {
+		return models.Order{}, err
+	}
 
-// 		// заполняем основные поля заказа
-// 		if err := rows.Scan(&order.OrderUID, &order.TrackNumber, &order.Entry, &order.Locale,
-// 			&order.CustomerID, &order.DeliveryService, &order.ShardKey, &order.SmID,
-// 			&order.DateCreated, &order.OofShard); err != nil {
-// 			log.Fatal(err)
-// 			return nil
-// 		}
+	// Запрос в бд, данные таблицы payment
+	err = db.QueryRowContext(ctx, "SELECT * FROM payment WHERE transaction = $1", orderUID).Scan(
+		&order.Payment.Transaction, &order.Payment.Currency, &order.Payment.Provider,
+		&order.Payment.Amount, &order.Payment.PaymentDT, &order.Payment.Bank,
+		&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee,
+	)
+	if err != nil {
+		return models.Order{}, err
+	}
 
-// 		// заполняем поля delivery
-// 		err = db.QueryRow(`SELECT name, phone, zip, city, address, region, email FROM delivery WHERE order_uid = $1`, order.OrderUID).
-// 			Scan(&order.Delivery.Name, &order.Delivery.Phone, &order.Delivery.Zip,
-// 				&order.Delivery.City, &order.Delivery.Address, &order.Delivery.Region,
-// 				&order.Delivery.Email)
-// 		if err != nil && err != sql.ErrNoRows {
-// 			log.Fatal(err)
-// 			return nil
-// 		}
+	// Запрос в бд, данные таблицы items
+	rows, err := db.QueryContext(ctx, "SELECT * FROM items WHERE order_uid = $1", orderUID)
+	if err != nil {
+		return models.Order{}, err
+	}
+	defer rows.Close()
 
-// 		// заполняем поля payment
-// 		err = db.QueryRow(`SELECT transaction, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee FROM payment WHERE order_uid = $1`, order.OrderUID).
-// 			Scan(&order.Payment.Transaction, &order.Payment.Currency, &order.Payment.Provider,
-// 				&order.Payment.Amount, &order.Payment.PaymentDT, &order.Payment.Bank,
-// 				&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee)
-// 		if err != nil && err != sql.ErrNoRows {
-// 			log.Fatal(err)
-// 			return nil
-// 		}
+	for rows.Next() {
+		var item models.Item
+		if err := rows.Scan(
+			&item.ChrtID, &item.TrackNumber, &item.Price, &item.Rid, &item.Name, &item.Sale,
+			&item.Size, &item.TotalPrice, &item.NmID, &item.Brand, &item.Status,
+		); err != nil {
+			return models.Order{}, err
+		}
+		order.Items = append(order.Items, item)
+	}
 
-// 		// заполняем поля items
-// 		itemRows, err := db.Query(`SELECT chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status FROM items WHERE order_uid = $1`, order.OrderUID)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 			return nil
-// 		}
-
-// 		for itemRows.Next() {
-// 			var item models.Item
-
-// 			if err := itemRows.Scan(&item.ChrtID, &item.TrackNumber, &item.Price, &item.Rid,
-// 				&item.Name, &item.Sale, &item.Size, &item.TotalPrice, &item.NmID, &item.Brand,
-// 				&item.Status); err != nil {
-// 				itemRows.Close()
-// 				log.Fatal(err)
-// 				return nil
-// 			}
-// 			order.Items = append(order.Items, item)
-// 		}
-// 		itemRows.Close()
-
-// 		// сохраняем в кэш
-// 		mu.Lock()
-// 		cache.Orders[order.OrderUID] = order
-// 		mu.Unlock()
-
-// 		log.Printf("Заказ %s загружен в кэш", order.OrderUID)
-// 	}
-
-// 	err = rows.Err()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 		return nil
-// 	}
-
-// 	log.Printf("Инициализация кэша завершена. Загружено %d заказов", len(cache.Orders))
-// 	return cache
-// }
+	return order, nil
+}
