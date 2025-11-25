@@ -51,13 +51,13 @@ docker ps
 ## Пример запроса к API
 
 ```
-GET http://localhost:8081/order/<id>
+GET http://localhost:8082/order/<id>
 ```
 
 Пример корректного ID:
 
 ```
-GET http://localhost:8081/order/b563feb7b2b84b6test
+GET http://localhost:8082/order/b563feb7b2b84b6test
 ```
 
 ---
@@ -125,7 +125,9 @@ docker exec -it wb_kafka kafka-topics \
 
 ---
 
-## SQL: создание таблиц
+## SQL: таблицы
+
+### orders
 
 ```
 CREATE TABLE orders (
@@ -141,7 +143,11 @@ CREATE TABLE orders (
   date_created TIMESTAMP,
   oof_shard VARCHAR(10)
 );
+```
 
+### delivery
+
+```
 CREATE TABLE delivery (
   order_uid VARCHAR(50) PRIMARY KEY REFERENCES orders(order_uid),
   name VARCHAR(255),
@@ -152,20 +158,28 @@ CREATE TABLE delivery (
   region VARCHAR(100),
   email VARCHAR(100)
 );
+```
 
+### payment
+
+```
 CREATE TABLE payment (
   transaction VARCHAR(50) PRIMARY KEY REFERENCES orders(order_uid),
   request_id VARCHAR(50),
   currency VARCHAR(10),
   provider VARCHAR(50),
   amount NUMERIC(12,2),
-  payment_dt TIMESTAMP,
+  payment_dt BIGINT,
   bank VARCHAR(50),
   delivery_cost NUMERIC(12,2),
   goods_total NUMERIC(12,2),
   custom_fee NUMERIC(12,2)
 );
+```
 
+### items
+
+```
 CREATE TABLE items (
   chrt_id BIGINT PRIMARY KEY,
   order_uid VARCHAR(50) REFERENCES orders(order_uid),
@@ -173,7 +187,7 @@ CREATE TABLE items (
   price NUMERIC(12,2),
   rid VARCHAR(50),
   name VARCHAR(255),
-  sale NUMERIC(5,2),
+  sale INT,
   size VARCHAR(10),
   total_price NUMERIC(12,2),
   nm_id BIGINT,
@@ -184,40 +198,23 @@ CREATE TABLE items (
 
 ---
 
-## SQL: тестовые данные
+## Тестовые данные
 
 ```
-INSERT INTO orders (
-  order_uid, track_number, entry, locale, internal_signature,
-  customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard
-) VALUES (
-  'b563feb7b2b84b6test','WBILMTESTTRACK','WBIL','en','','test','meest','9',99,
-  '2021-11-26T06:22:19Z','1'
-);
+INSERT INTO orders (order_uid, track_number, entry, locale, internal_signature,
+customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard)
+VALUES ('b563feb7b2b84b6test','WBILMTESTTRACK','WBIL','en','','test','meest','9',99,'2021-11-26T06:22:19Z','1');
 
-INSERT INTO delivery (
-  order_uid, name, phone, zip, city, address, region, email
-) VALUES (
-  'b563feb7b2b84b6test','Test Testov','+9720000000','2639809',
-  'Kiryat Mozkin','Ploshad Mira 15','Kraiot','test@gmail.com'
-);
+INSERT INTO delivery (order_uid, name, phone, zip, city, address, region, email)
+VALUES ('b563feb7b2b84b6test','Test Testov','+9720000000','2639809','Kiryat Mozkin','Ploshad Mira 15','Kraiot','test@gmail.com');
 
-INSERT INTO payment (
-  transaction, request_id, currency, provider, amount,
-  payment_dt, bank, delivery_cost, goods_total, custom_fee
-) VALUES (
-  'b563feb7b2b84b6test','','USD','wbpay','1817',
-  to_timestamp(1637907727),'alpha','1500','317','0'
-);
+INSERT INTO payment (transaction, request_id, currency, provider, amount,
+payment_dt, bank, delivery_cost, goods_total, custom_fee)
+VALUES ('b563feb7b2b84b6test','','USD','wbpay','1817',1637907727,'alpha','1500','317','0');
 
-INSERT INTO items (
-  chrt_id, order_uid, price, rid, name, sale, size,
-  total_price, nm_id, brand, status
-) VALUES
-  ('9934930','b563feb7b2b84b6test','453','ab4219087a764ae0btest',
-   'Mascaras','30','0','317','2389212','Vivienne Sabo','202'),
-  ('9934931','b563feb7b2b84b6test','500','cd1234567a764ae0btest',
-   'Lipstick','10','M','450','2389213','BrandX','201');
+INSERT INTO items (chrt_id, order_uid, track_number, price, rid, name, sale, size,
+total_price, nm_id, brand, status)
+VALUES (9934930,'b563feb7b2b84b6test','WBILMTESTTRACK','453','ab4219087a764ae0btest','Mascaras',30,'0','317','2389212','Vivienne Sabo',202);
 ```
 
 ---

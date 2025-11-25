@@ -16,11 +16,6 @@ import (
 func NewServer(cfg config.HttpServer, cache *cache.Cache, db *sql.DB) *http.Server {
 	mux := http.NewServeMux()
 
-	// // маршрутизация
-	// mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Write([]byte("Hello World!"))
-	// })
-
 	// Get order
 	mux.HandleFunc("/order/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

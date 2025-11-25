@@ -30,7 +30,6 @@ func main() {
 
 	// 5. Создаем обьект http.Server
 	srv := server.NewServer(cfg.HttpServer, cache, db)
-	// log.Println("Сервер будет запущен на", cfg.HttpServer.Port)
 
 	// 6. Запускаем сервер
 	if err := srv.ListenAndServe(); err != nil {

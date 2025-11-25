@@ -40,8 +40,6 @@ services:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      # KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
     volumes:
       - kafka_data:/var/lib/kafka/data
 
@@ -60,29 +58,6 @@ services:
 
 volumes:
   pgdata:
-#   pgadmin_data:
-#   pgadmin_sessions:
   kafka_data:
   zookeeper-data:
   zookeeper-log:
-
-
-  # pgadmin:
-  #   image: dpage/pgadmin4
-  #   container_name: wb_pgadmin
-  #   restart: always
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-  #   ports:
-  #     - "8081:80"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
-  #     interval: 10s
-  #     retries: 5
-  #   volumes:
-  #     - pgadmin_data:/var/lib/pgadmin
-  #     - pgadmin_sessions:/var/lib/pgadmin/sessions

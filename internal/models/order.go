@@ -21,8 +21,7 @@ type Order struct {
 	// DateCreated: если в JSON ISO-8601 (например "2023-10-01T12:34:56Z"),
 	// используем time.Time. Если приходит unix-timestamp — используйте поле Payment.PaymentDT.
 	DateCreated time.Time `json:"date_created,omitempty"`
-	// OofShard и т.п. — опциональные поля
-	OofShard string `json:"oof_shard,omitempty"`
+	OofShard    string    `json:"oof_shard,omitempty"`
 }
 
 // Delivery — данные доставки
@@ -63,6 +62,4 @@ type Item struct {
 	NmID        int    `json:"nm_id,omitempty"`       // ещё один id
 	Brand       string `json:"brand,omitempty"`
 	Status      int    `json:"status,omitempty"`
-	// Если нужен count/quantity, добавь поле:
-	// Count int `json:"count,omitempty"`
 }
