@@ -13,8 +13,6 @@ import (
 func main() {
 	// 1. Загружаем конфиг
 	cfg := config.Load()
-	// Создаем кэш
-	// cache := cache.NewCache()
 
 	// 2. Соединение с бд
 	db := db.Connect(&cfg.Database)
@@ -22,9 +20,6 @@ func main() {
 
 	// Подгружаем кэш из бд
 	cache := cache.NewCacheFromDB(db)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 
 	// 3. Подключение к Kafka
 	reader := kafka.NewReader(cfg.Kafka)
@@ -35,7 +30,7 @@ func main() {
 
 	// 5. Создаем обьект http.Server
 	srv := server.NewServer(cfg.HttpServer, cache, db)
-	log.Println("Сервер будет запущен на", cfg.HttpServer.Port)
+	// log.Println("Сервер будет запущен на", cfg.HttpServer.Port)
 
 	// 6. Запускаем сервер
 	if err := srv.ListenAndServe(); err != nil {

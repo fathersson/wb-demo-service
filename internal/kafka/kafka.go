@@ -28,6 +28,7 @@ import (
 
 // NewReader создает и возвращает настроенный kafka.Reader
 func NewReader(cfg config.KafkaConfig) *kafka.Reader {
+	defer log.Println("Kafka reader запущен")
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        []string{cfg.Broker},
 		Topic:          cfg.Topic,
@@ -39,6 +40,7 @@ func NewReader(cfg config.KafkaConfig) *kafka.Reader {
 
 // ConsumeMessages читает сообщения из Kafka
 func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache) {
+	log.Println("Kafka consumer запущен")
 	var order models.Order
 	ctx := context.Background()
 
@@ -72,9 +74,11 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache) {
 			log.Println("Ошибка сохранения заказа:", err)
 			continue
 		}
+		log.Printf("Заказ %s сохранен в базе данных", order.OrderUID)
 
 		// Добавляем сообщение в кэш
 		cache.SetCache(order.OrderUID, order)
+		log.Printf("Заказ %s добавлен в кэш", order.OrderUID)
 
 		// Посылаем сигнал в Kafka, что мы обработали его сообщение
 		err = reader.CommitMessages(ctx, msg)
@@ -83,5 +87,8 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache) {
 		}
 		// Принтуем в консоль
 		log.Printf("Консьюмер кафки обработал заказ %s", order.OrderUID)
+
+		// Тело заказа
+		log.Printf("Тело заказа: %+v", order)
 	}
 }

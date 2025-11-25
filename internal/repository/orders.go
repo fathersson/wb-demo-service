@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"log"
 
 	"github.com/fathersson/wb-demo-service/internal/models"
 )
@@ -76,7 +75,7 @@ func SaveOrder(ctx context.Context, db *sql.DB, order models.Order) error {
 		return err
 	}
 
-	log.Printf("Order %s успешно сохранён", orderUID)
+	// log.Printf("Заказ %s успешно сохранён", orderUID)
 	return nil
 }
 

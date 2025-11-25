@@ -44,7 +44,8 @@ func NewServer(cfg config.HttpServer, cache *cache.Cache, db *sql.DB) *http.Serv
 			w.WriteHeader(http.StatusOK)
 			// Кодируем структуру в JSON и отправляем клиенту
 			json.NewEncoder(w).Encode(order)
-			log.Printf("Заказ %s в кеше нашли", id)
+			log.Printf("Заказ %s в кеше найден", id)
+			log.Printf("Тело заказа: %+v", order)
 			return
 		}
 		log.Printf("Заказ %s в кеше не нашли", id)
@@ -52,10 +53,18 @@ func NewServer(cfg config.HttpServer, cache *cache.Cache, db *sql.DB) *http.Serv
 		// Получаем заказ из БД если в кеше нет
 		order, err := repository.GetOrderById(r.Context(), db, id)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			log.Printf("Заказ %s в БД не нашли", id)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			// http.Error(w, err.Error(), http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": "not found",
+			})
 			return
 		}
-		log.Printf("Заказ %s в БД нашли", id)
+		log.Printf("Заказ %s в БД найден", id)
+		log.Printf("Тело заказа: %+v", order)
 
 		// Сохраняем заказ в кэш
 		cache.SetCache(id, order)
@@ -71,6 +80,8 @@ func NewServer(cfg config.HttpServer, cache *cache.Cache, db *sql.DB) *http.Serv
 
 	// Раздача статических файлов
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
+
+	log.Println("Сервер будет запущен на", cfg.Port)
 
 	return &http.Server{
 		Addr:    ":" + cfg.Port,
