@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -79,7 +80,7 @@ func NewServer(cfg config.HttpServer, cache *cache.Cache, db *sql.DB) *http.Serv
 	log.Println("Сервер будет запущен на", cfg.Port)
 
 	return &http.Server{
-		Addr:    ":" + cfg.Port,
+		Addr:    fmt.Sprintf(":%d", cfg.Port),
 		Handler: CORS(mux),
 	}
 }

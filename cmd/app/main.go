@@ -1,7 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
+	"net/http"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/fathersson/wb-demo-service/internal/cache"
 	"github.com/fathersson/wb-demo-service/internal/config"
@@ -11,29 +18,62 @@ import (
 )
 
 func main() {
-	// 1. Загружаем конфиг
-	cfg := config.Load()
+	// 0. Контекст для корректного завершения
+	var wg sync.WaitGroup
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// 1. Загружаем .env и конфиг
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal("Ошибка загрузки конфигурации:", err)
+	}
 
 	// 2. Соединение с бд
-	db := db.Connect(&cfg.Database)
-	defer db.Close()
+	database, err := db.Connect(&cfg.Database)
+	if err != nil {
+		log.Fatal("Не удалось подключиться к базе:", err)
+	}
+	defer database.Close()
+	log.Println("Соединение с базой данных установлено")
 
 	// Подгружаем кэш из бд
-	cache := cache.NewCacheFromDB(db)
+	orderCache, err := cache.NewCacheFromDB(database)
+	if err != nil {
+		log.Fatal("Ошибка загрузки кэша:", err)
+	}
 
 	// 3. Подключение к Kafka
 	reader := kafka.NewReader(cfg.Kafka)
 	defer reader.Close()
 
 	// 4. Читаем сообщения не блокируя основной поток
-	go kafka.ConsumeMessages(reader, db, cache)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		kafka.ConsumeMessages(reader, database, orderCache, ctx)
+	}()
 
 	// 5. Создаем обьект http.Server
-	srv := server.NewServer(cfg.HttpServer, cache, db)
+	srv := server.NewServer(cfg.HttpServer, orderCache, database)
 
 	// 6. Запускаем сервер
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatal("Ошибка запуска сервера:", err)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("Ошибка запуска сервера:", err)
+		}
+	}()
+
+	<-ctx.Done()
+	ctxShutdown, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctxShutdown); err != nil {
+		log.Println("Ошибка завершения сервера с shutdown")
 	}
+
+	wg.Wait()
 
 }

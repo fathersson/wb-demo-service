@@ -2,6 +2,7 @@ package cache
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"sync"
 
@@ -34,13 +35,12 @@ func (c *Cache) GetCache(orderUID string) (models.Order, bool) {
 }
 
 // Загружает кэш из базы при старте
-func NewCacheFromDB(db *sql.DB) *Cache {
+func NewCacheFromDB(db *sql.DB) (*Cache, error) {
 	cache := NewCache()
 
 	rows, err := db.Query("SELECT order_uid, track_number, entry, locale, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard FROM orders")
 	if err != nil {
-		log.Fatal(err)
-		return nil
+		return nil, fmt.Errorf("ошибка запроса к базе: %w", err)
 	}
 	defer rows.Close()
 
@@ -52,8 +52,7 @@ func NewCacheFromDB(db *sql.DB) *Cache {
 		if err := rows.Scan(&order.OrderUID, &order.TrackNumber, &order.Entry, &order.Locale,
 			&order.CustomerID, &order.DeliveryService, &order.ShardKey, &order.SmID,
 			&order.DateCreated, &order.OofShard); err != nil {
-			log.Fatal(err)
-			return nil
+			return nil, fmt.Errorf("ошибка сканирования заказа: %w", err)
 		}
 
 		// заполняем поля delivery
@@ -62,8 +61,7 @@ func NewCacheFromDB(db *sql.DB) *Cache {
 				&order.Delivery.City, &order.Delivery.Address, &order.Delivery.Region,
 				&order.Delivery.Email)
 		if err != nil && err != sql.ErrNoRows {
-			log.Fatal(err)
-			return nil
+			return nil, fmt.Errorf("ошибка сканирования delivery: %w", err)
 		}
 
 		// заполняем поля payment
@@ -72,15 +70,13 @@ func NewCacheFromDB(db *sql.DB) *Cache {
 				&order.Payment.Amount, &order.Payment.PaymentDT, &order.Payment.Bank,
 				&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee)
 		if err != nil && err != sql.ErrNoRows {
-			log.Fatal(err)
-			return nil
+			return nil, fmt.Errorf("ошибка сканирования payment: %w", err)
 		}
 
 		// заполняем поля items
 		itemRows, err := db.Query(`SELECT chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status FROM items WHERE order_uid = $1`, order.OrderUID)
 		if err != nil {
-			log.Fatal(err)
-			return nil
+			return nil, fmt.Errorf("ошибка запроса к базе: %w", err)
 		}
 
 		for itemRows.Next() {
@@ -90,8 +86,7 @@ func NewCacheFromDB(db *sql.DB) *Cache {
 				&item.Name, &item.Sale, &item.Size, &item.TotalPrice, &item.NmID, &item.Brand,
 				&item.Status); err != nil {
 				itemRows.Close()
-				log.Fatal(err)
-				return nil
+				return nil, fmt.Errorf("ошибка сканирования items: %w", err)
 			}
 			order.Items = append(order.Items, item)
 		}
@@ -107,10 +102,9 @@ func NewCacheFromDB(db *sql.DB) *Cache {
 
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
-		return nil
+		return nil, fmt.Errorf("ошибка запроса к базе: %w", err)
 	}
 
 	log.Printf("Инициализация кэша завершена. Загружено %d заказов", len(cache.Orders))
-	return cache
+	return cache, nil
 }
