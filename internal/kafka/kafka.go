@@ -10,6 +10,7 @@ import (
 	"github.com/fathersson/wb-demo-service/internal/config"
 	"github.com/fathersson/wb-demo-service/internal/models"
 	"github.com/fathersson/wb-demo-service/internal/repository"
+	"github.com/go-playground/validator/v10"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -51,11 +52,21 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache, ctx c
 				continue
 			}
 
-			// Проверка корректности order_uid
-			if order.OrderUID == "" {
-				log.Println("Пустой order_uid, пропускаем")
+			// Проверка корректности order
+			// err = models.ValidateOrder(order)
+			// if err != nil {
+			// 	log.Printf("Сообщение некорректно, ошибка:%s", err)
+			// 	continue
+			// }
+
+			var validate *validator.Validate
+			validate = validator.New()
+			err = validate.Struct(order)
+			if err != nil {
+				log.Printf("Сообщение некорректно, ошибка:%s", err)
 				continue
 			}
+
 			// Сообщение корректное
 			log.Printf("Получили заказ %s из %s", order.OrderUID, order.Delivery.City)
 

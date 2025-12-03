@@ -6,9 +6,9 @@ import (
 
 // Order — корневая структура заказа
 type Order struct {
-	OrderUID          string   `json:"order_uid"`
-	TrackNumber       string   `json:"track_number"`
-	Entry             string   `json:"entry,omitempty"`
+	OrderUID          string   `json:"order_uid" validate:"alphanum"`       // Буквы и цифры`
+	TrackNumber       string   `json:"track_number" validate:"required"`    // Не пустая строка`
+	Entry             string   `json:"entry,omitempty" validate:"required"` // Не пустая строка`
 	Delivery          Delivery `json:"delivery"`
 	Payment           Payment  `json:"payment"`
 	Items             []Item   `json:"items"`
@@ -26,7 +26,7 @@ type Order struct {
 
 // Delivery — данные доставки
 type Delivery struct {
-	Name    string `json:"name"`
+	Name    string `json:"name" validate:"alpha"` // Только буквы`
 	Phone   string `json:"phone"`
 	Zip     string `json:"zip"`
 	City    string `json:"city"`

@@ -12,16 +12,30 @@ import (
 type Cache struct {
 	mu     sync.RWMutex
 	Orders map[string]models.Order
+	keys   []string // порядок добавления записей в кэш
+	maxLen int      // лимит для кэша
 }
 
 func NewCache() *Cache {
 	return &Cache{
 		Orders: make(map[string]models.Order),
+		maxLen: 1000,
 	}
 }
 
+// Если orderUID нет в кэше, добавляем в keys
+// Таким образом, когда наш кэш достигнет лимита
+// Мы удалим самый старый элемент в keys и сдвинем слайс на 1 позицию
 func (c *Cache) SetCache(orderUID string, order models.Order) {
 	c.mu.Lock()
+	if _, ok := c.Orders[orderUID]; !ok {
+		c.keys = append(c.keys, orderUID)
+	}
+	if len(c.keys) > c.maxLen {
+		oldKey := c.keys[0]
+		delete(c.Orders, oldKey)
+		c.keys = c.keys[1:]
+	}
 	c.Orders[orderUID] = order
 	c.mu.Unlock()
 }
@@ -93,9 +107,7 @@ func NewCacheFromDB(db *sql.DB) (*Cache, error) {
 		itemRows.Close()
 
 		// сохраняем в кэш
-		cache.mu.Lock()
-		cache.Orders[order.OrderUID] = order
-		cache.mu.Unlock()
+		cache.SetCache(order.OrderUID, order)
 
 		log.Printf("Заказ %s загружен в кэш", order.OrderUID)
 	}
