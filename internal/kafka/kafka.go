@@ -30,6 +30,7 @@ func NewReader(cfg config.KafkaConfig) *kafka.Reader {
 func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache, ctx context.Context) {
 	log.Println("Kafka consumer запущен")
 	var order models.Order
+	var validate = validator.New()
 
 	// Читаем сообщения
 	for {
@@ -59,11 +60,14 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache, ctx c
 			// 	continue
 			// }
 
-			var validate *validator.Validate
-			validate = validator.New()
+			// var validate = validator.New()
 			err = validate.Struct(order)
 			if err != nil {
 				log.Printf("Сообщение некорректно, ошибка:%s", err)
+				continue
+			}
+			if len(order.Items) == 0 {
+				log.Println("Сообщение некорректно, нет товаров в заказе")
 				continue
 			}
 
