@@ -53,14 +53,6 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache, ctx c
 				continue
 			}
 
-			// Проверка корректности order
-			// err = models.ValidateOrder(order)
-			// if err != nil {
-			// 	log.Printf("Сообщение некорректно, ошибка:%s", err)
-			// 	continue
-			// }
-
-			// var validate = validator.New()
 			err = validate.Struct(order)
 			if err != nil {
 				log.Printf("Сообщение некорректно, ошибка:%s", err)

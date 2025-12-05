@@ -43,11 +43,17 @@ func main() {
 		log.Fatal("Ошибка загрузки кэша:", err)
 	}
 
-	// 3. Подключение к Kafka
+	writer := kafka.NewWriter(cfg.Kafka)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		kafka.Generator(writer, ctx)
+	}()
+
+	// 3. Читаем сообщения не блокируя основной поток
 	reader := kafka.NewReader(cfg.Kafka)
 	defer reader.Close()
 
-	// 4. Читаем сообщения не блокируя основной поток
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

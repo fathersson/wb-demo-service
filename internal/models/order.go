@@ -6,13 +6,13 @@ import (
 
 // Order — корневая структура заказа
 type Order struct {
-	OrderUID          string   `json:"order_uid" validate:"required,alphanum"` // Буквы и цифры`
-	TrackNumber       string   `json:"track_number" validate:"required"`       // Не пустая строка`
-	Entry             string   `json:"entry,omitempty" validate:"omitempty"`   // Не пустая строка`
-	Delivery          Delivery `json:"delivery" validate:"required,dive"`
-	Payment           Payment  `json:"payment" validate:"required,dive"`
-	Items             []Item   `json:"items" validate:"required,dive"`
-	Locale            string   `json:"locale,omitempty" validate:"omitempty"` // Только буквы``
+	OrderUID          string   `json:"order_uid" validate:"required,alphanum"` // Буквы и цифры
+	TrackNumber       string   `json:"track_number" validate:"required"`       // Не пустая строка
+	Entry             string   `json:"entry,omitempty" validate:"omitempty"`   // Не пустая строка
+	Delivery          Delivery `json:"delivery" validate:"required"`
+	Payment           Payment  `json:"payment" validate:"required"`
+	Items             []Item   `json:"items" validate:"required,min=1"`
+	Locale            string   `json:"locale,omitempty" validate:"omitempty"` // Только буквы
 	InternalSignature string   `json:"internal_signature,omitempty"`
 	CustomerID        string   `json:"customer_id,omitempty" validate:"omitempty"`
 	DeliveryService   string   `json:"delivery_service,omitempty" validate:"omitempty"`
@@ -26,10 +26,10 @@ type Order struct {
 
 // Delivery — данные доставки
 type Delivery struct {
-	Name    string `json:"name" validate:"required,alphaunicode"` // Только буквы`
-	Phone   string `json:"phone" validate:"required,e164"`
+	Name    string `json:"name" validate:"required"`
+	Phone   string `json:"phone" validate:"required"`
 	Zip     string `json:"zip" validate:"required,numeric"`
-	City    string `json:"city" validate:"required,alphaunicode"`
+	City    string `json:"city" validate:"required"`
 	Address string `json:"address" validate:"required"`
 	Region  string `json:"region,omitempty" validate:"omitempty"`
 	Email   string `json:"email,omitempty" validate:"omitempty,email"`
@@ -51,15 +51,15 @@ type Payment struct {
 
 // Item — один товар в заказе
 type Item struct {
-	ChrtID      int    `json:"chrt_id" validate:"required,min=0"`           // id в каталоге
+	ChrtID      int    `json:"chrt_id" validate:"required,gt=0"`            // id в каталоге
 	TrackNumber string `json:"track_number,omitempty" validate:"omitempty"` // трек-номер позиции (если есть)
 	Price       int    `json:"price" validate:"required,min=0"`             // цена за единицу
 	Rid         string `json:"rid,omitempty" validate:"omitempty,alphanum"` // request id / внутренний id
 	Name        string `json:"name" validate:"required"`
 	Sale        int    `json:"sale,omitempty"` // скидка в процентах или в абсолюте — договоритесь
 	Size        string `json:"size,omitempty"`
-	TotalPrice  int    `json:"total_price,omitempty" validate:"omitempty,min=0"` // цена * количество (если в JSON есть)
-	NmID        int    `json:"nm_id,omitempty" validate:"omitempty,min=0"`       // ещё один id
+	TotalPrice  int    `json:"total_price" validate:"required,min=0"`      // цена * количество (если в JSON есть)
+	NmID        int    `json:"nm_id,omitempty" validate:"omitempty,min=0"` // ещё один id
 	Brand       string `json:"brand,omitempty" validate:"omitempty"`
 	Status      int    `json:"status,omitempty" validate:"omitempty,min=0"`
 }

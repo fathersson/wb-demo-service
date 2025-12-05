@@ -46,9 +46,9 @@ func SaveOrder(ctx context.Context, db *sql.DB, order models.Order) error {
 	// Таблица payment
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO payment
-		(transaction, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		order.Payment.Transaction, order.Payment.Currency, order.Payment.Provider, order.Payment.Amount,
+		(order_uid, transaction, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		orderUID, order.Payment.Transaction, order.Payment.Currency, order.Payment.Provider, order.Payment.Amount,
 		order.Payment.PaymentDT, order.Payment.Bank, order.Payment.DeliveryCost, order.Payment.GoodsTotal, order.Payment.CustomFee,
 	)
 	if err != nil {

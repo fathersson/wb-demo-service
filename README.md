@@ -25,14 +25,14 @@ cp .env.example .env
 ### 2. Запуск всего окружения
 
 ```
-docker-compose up -d (запускаем контейнеры в фоновом режиме)
+docker compose up -d (запускаем контейнеры в фоновом режиме)
 ```
 
 Остановка:
 
 ```
 docker compose stop  # Просто останавливает контейнеры
-docker-compose down (останавливаем и удаляем контейнеры)
+docker compose down (останавливаем и удаляем контейнеры)
 ```
 
 Удаление контейнеров и томов:
@@ -139,70 +139,73 @@ docker exec -it wb_kafka kafka-topics \
 ### orders
 
 ```
-CREATE TABLE orders (
-  order_uid VARCHAR(50) PRIMARY KEY,
-  track_number VARCHAR(50),
-  entry VARCHAR(20),
-  locale VARCHAR(10),
-  internal_signature TEXT,
-  customer_id VARCHAR(50),
-  delivery_service VARCHAR(50),
-  shardkey VARCHAR(10),
-  sm_id INT,
-  date_created TIMESTAMP,
-  oof_shard VARCHAR(10)
+-- ================================
+-- 1) Таблица orders
+-- ================================
+CREATE TABLE IF NOT EXISTS orders (
+    order_uid          TEXT PRIMARY KEY,
+    track_number       TEXT NOT NULL,
+    entry              TEXT,
+    locale             TEXT,
+    internal_signature TEXT,
+    customer_id        TEXT,
+    delivery_service   TEXT,
+    shardkey           TEXT,
+    sm_id              INTEGER,
+    date_created       TIMESTAMPTZ,
+    oof_shard          TEXT
 );
-```
 
-### delivery
-
-```
-CREATE TABLE delivery (
-  order_uid VARCHAR(50) PRIMARY KEY REFERENCES orders(order_uid),
-  name VARCHAR(255),
-  phone VARCHAR(50),
-  zip VARCHAR(20),
-  city VARCHAR(100),
-  address TEXT,
-  region VARCHAR(100),
-  email VARCHAR(100)
+-- ================================
+-- 2) Таблица delivery
+-- ================================
+CREATE TABLE IF NOT EXISTS delivery (
+    order_uid TEXT PRIMARY KEY REFERENCES orders(order_uid) ON DELETE CASCADE,
+    name      TEXT NOT NULL,
+    phone     TEXT NOT NULL,
+    zip       TEXT NOT NULL,
+    city      TEXT NOT NULL,
+    address   TEXT NOT NULL,
+    region    TEXT,
+    email     TEXT
 );
-```
 
-### payment
-
-```
-CREATE TABLE payment (
-  transaction VARCHAR(50) PRIMARY KEY REFERENCES orders(order_uid),
-  request_id VARCHAR(50),
-  currency VARCHAR(10),
-  provider VARCHAR(50),
-  amount NUMERIC(12,2),
-  payment_dt BIGINT,
-  bank VARCHAR(50),
-  delivery_cost NUMERIC(12,2),
-  goods_total NUMERIC(12,2),
-  custom_fee NUMERIC(12,2)
+-- ================================
+-- 3) Таблица payment
+-- ================================
+CREATE TABLE IF NOT EXISTS payment (
+    order_uid     TEXT PRIMARY KEY REFERENCES orders(order_uid) ON DELETE CASCADE,
+    transaction   TEXT NOT NULL,
+    request_id    TEXT,
+    currency      TEXT NOT NULL,
+    provider      TEXT NOT NULL,
+    amount        INTEGER NOT NULL,
+    payment_dt    BIGINT NOT NULL,
+    bank          TEXT,
+    delivery_cost INTEGER NOT NULL,
+    goods_total   INTEGER NOT NULL,
+    custom_fee    INTEGER
 );
-```
 
-### items
-
-```
-CREATE TABLE items (
-  chrt_id BIGINT PRIMARY KEY,
-  order_uid VARCHAR(50) REFERENCES orders(order_uid),
-  track_number VARCHAR(50),
-  price NUMERIC(12,2),
-  rid VARCHAR(50),
-  name VARCHAR(255),
-  sale INT,
-  size VARCHAR(10),
-  total_price NUMERIC(12,2),
-  nm_id BIGINT,
-  brand VARCHAR(100),
-  status INT
+-- ================================
+-- 4) Таблица items
+-- ================================
+CREATE TABLE IF NOT EXISTS items (
+    id SERIAL PRIMARY KEY,
+    order_uid   TEXT NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
+    chrt_id     INTEGER NOT NULL,
+    track_number TEXT,
+    price       INTEGER NOT NULL,
+    rid         TEXT,
+    name        TEXT NOT NULL,
+    sale        INTEGER,
+    size        TEXT,
+    total_price INTEGER,
+    nm_id       INTEGER,
+    brand       TEXT,
+    status      INTEGER
 );
+
 ```
 
 ---
@@ -255,7 +258,9 @@ go run producer.go (не реализован)
 
 7-8) Реализована валидация данных всех важных полей в заказе с помощью пакета go-playground/validator и также закоментирован второй вариант - ручная проверка, с помощью сущности validate.go 
 
-9) 
+9) Реализован полноценный генератор данных, который поочередно посылает в топик валидное и битое сообщение
+
+10)
 ```
 
 ---

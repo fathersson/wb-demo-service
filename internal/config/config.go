@@ -48,9 +48,9 @@ func Load() (*Config, error) {
 	var cfg Config
 
 	// Читаем конфиг
-	if err := cleanenv.ReadConfig("config.yaml", &cfg); err != nil {
-		return nil, fmt.Errorf("ошибка чтения config.yaml: %w", err)
-	}
+	// if err := cleanenv.ReadConfig("config.yaml", &cfg); err != nil {
+	// 	return nil, fmt.Errorf("ошибка чтения config.yaml: %w", err)
+	// }
 
 	// Подмешиваем переменные окружения в конфиг
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
