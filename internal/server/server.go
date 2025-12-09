@@ -1,7 +1,6 @@
 package server
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,7 +13,7 @@ import (
 )
 
 // NewServer — возвращает http.Server
-func NewServer(cfg config.HttpServer, cache *cache.Cache, db *sql.DB) *http.Server {
+func NewServer(cfg config.HttpServer, cache cache.CacheInterface, db repository.OrderRepository) *http.Server {
 	mux := http.NewServeMux()
 
 	// Get order
@@ -47,7 +46,7 @@ func NewServer(cfg config.HttpServer, cache *cache.Cache, db *sql.DB) *http.Serv
 		log.Printf("Заказ %s в кеше не нашли", id)
 
 		// Получаем заказ из БД если в кеше нет
-		order, err := repository.GetOrderById(r.Context(), db, id)
+		order, err := db.GetOrderById(r.Context(), id)
 		if err != nil {
 			log.Printf("Заказ %s в БД не нашли", id)
 

@@ -7,7 +7,14 @@ import (
 	"sync"
 
 	"github.com/fathersson/wb-demo-service/internal/models"
+	"github.com/fathersson/wb-demo-service/internal/repository"
 )
+
+//go:generate go run github.com/vektra/mockery/v2@v2.53.5 --name=CacheInterface --output=./cachemocks --with-expecter
+type CacheInterface interface {
+	SetCache(orderUID string, order models.Order)
+	GetCache(orderUID string) (models.Order, bool)
+}
 
 type Cache struct {
 	mu     sync.RWMutex
@@ -49,7 +56,7 @@ func (c *Cache) GetCache(orderUID string) (models.Order, bool) {
 }
 
 // Загружает кэш из базы при старте
-func NewCacheFromDB(db *sql.DB) (*Cache, error) {
+func NewCacheFromDB(db repository.OrderRepository) (*Cache, error) {
 	cache := NewCache()
 
 	rows, err := db.Query("SELECT order_uid, track_number, entry, locale, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard FROM orders")

@@ -7,10 +7,34 @@ import (
 	"github.com/fathersson/wb-demo-service/internal/models"
 )
 
+//go:generate go run github.com/vektra/mockery/v2@v2.53.5 --name=OrderRepository --output=./repomocks --with-expecter
+type OrderRepository interface {
+	SaveOrder(ctx context.Context, order models.Order) error
+	GetOrderById(ctx context.Context, orderUID string) (models.Order, error)
+	Query(query string, args ...any) (*sql.Rows, error)
+	QueryRow(query string, args ...any) *sql.Row
+}
+
+type PostgresRepo struct {
+	db *sql.DB
+}
+
+func NewPostgresRepo(db *sql.DB) *PostgresRepo {
+	return &PostgresRepo{db: db}
+}
+
+func (r *PostgresRepo) Query(query string, args ...any) (*sql.Rows, error) {
+	return r.db.Query(query, args...)
+}
+
+func (r *PostgresRepo) QueryRow(query string, args ...any) *sql.Row {
+	return r.db.QueryRow(query, args...)
+}
+
 // SaveOrder сохраняет заказ и все связанные данные в базе в одной транзакции
-func SaveOrder(ctx context.Context, db *sql.DB, order models.Order) error {
+func (r *PostgresRepo) SaveOrder(ctx context.Context, order models.Order) error {
 	// Начало транзакции
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -80,11 +104,11 @@ func SaveOrder(ctx context.Context, db *sql.DB, order models.Order) error {
 }
 
 // Берем заказ по order_uid из бд
-func GetOrderById(ctx context.Context, db *sql.DB, orderUID string) (models.Order, error) {
+func (r *PostgresRepo) GetOrderById(ctx context.Context, orderUID string) (models.Order, error) {
 	var order models.Order
 
 	// Запрос в бд, данные таблицы orders
-	err := db.QueryRowContext(ctx, "SELECT * FROM orders WHERE order_uid = $1", orderUID).Scan(
+	err := r.db.QueryRowContext(ctx, "SELECT * FROM orders WHERE order_uid = $1", orderUID).Scan(
 		&order.OrderUID, &order.TrackNumber, &order.Entry, &order.Locale,
 		&order.CustomerID, &order.DeliveryService, &order.ShardKey, &order.SmID,
 		&order.DateCreated, &order.OofShard,
@@ -94,7 +118,7 @@ func GetOrderById(ctx context.Context, db *sql.DB, orderUID string) (models.Orde
 	}
 
 	// Запрос в бд, данные таблицы delivery
-	err = db.QueryRowContext(ctx, "SELECT * FROM delivery WHERE order_uid = $1", orderUID).Scan(
+	err = r.db.QueryRowContext(ctx, "SELECT * FROM delivery WHERE order_uid = $1", orderUID).Scan(
 		&order.Delivery.Name, &order.Delivery.Phone, &order.Delivery.Zip,
 		&order.Delivery.City, &order.Delivery.Address, &order.Delivery.Region,
 		&order.Delivery.Email,
@@ -104,7 +128,7 @@ func GetOrderById(ctx context.Context, db *sql.DB, orderUID string) (models.Orde
 	}
 
 	// Запрос в бд, данные таблицы payment
-	err = db.QueryRowContext(ctx, "SELECT * FROM payment WHERE transaction = $1", orderUID).Scan(
+	err = r.db.QueryRowContext(ctx, "SELECT * FROM payment WHERE transaction = $1", orderUID).Scan(
 		&order.Payment.Transaction, &order.Payment.Currency, &order.Payment.Provider,
 		&order.Payment.Amount, &order.Payment.PaymentDT, &order.Payment.Bank,
 		&order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee,
@@ -114,7 +138,7 @@ func GetOrderById(ctx context.Context, db *sql.DB, orderUID string) (models.Orde
 	}
 
 	// Запрос в бд, данные таблицы items
-	rows, err := db.QueryContext(ctx, "SELECT * FROM items WHERE order_uid = $1", orderUID)
+	rows, err := r.db.QueryContext(ctx, "SELECT * FROM items WHERE order_uid = $1", orderUID)
 	if err != nil {
 		return models.Order{}, err
 	}

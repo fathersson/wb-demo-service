@@ -14,6 +14,7 @@ import (
 	"github.com/fathersson/wb-demo-service/internal/config"
 	"github.com/fathersson/wb-demo-service/internal/db"
 	"github.com/fathersson/wb-demo-service/internal/kafka"
+	"github.com/fathersson/wb-demo-service/internal/repository"
 	"github.com/fathersson/wb-demo-service/internal/server"
 )
 
@@ -37,8 +38,10 @@ func main() {
 	defer database.Close()
 	log.Println("Соединение с базой данных установлено")
 
+	postgres := repository.NewPostgresRepo(database)
+
 	// Подгружаем кэш из бд
-	orderCache, err := cache.NewCacheFromDB(database)
+	orderCache, err := cache.NewCacheFromDB(postgres)
 	if err != nil {
 		log.Fatal("Ошибка загрузки кэша:", err)
 	}
@@ -57,11 +60,11 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		kafka.ConsumeMessages(reader, database, orderCache, ctx)
+		kafka.ConsumeMessages(reader, postgres, orderCache, ctx)
 	}()
 
 	// 5. Создаем обьект http.Server
-	srv := server.NewServer(cfg.HttpServer, orderCache, database)
+	srv := server.NewServer(cfg.HttpServer, orderCache, postgres)
 
 	// 6. Запускаем сервер
 	wg.Add(1)

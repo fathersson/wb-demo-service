@@ -14,6 +14,11 @@ import (
 	"github.com/fathersson/wb-demo-service/internal/models"
 )
 
+//go:generate go run github.com/vektra/mockery/v2@v2.53.5 --name=MessageWriter --output=./kafkamocks --with-expecter
+type MessageWriter interface {
+	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+}
+
 // NewWriter — создаёт Kafka producer
 func NewWriter(cfg config.KafkaConfig) *kafka.Writer {
 	return &kafka.Writer{
@@ -25,7 +30,7 @@ func NewWriter(cfg config.KafkaConfig) *kafka.Writer {
 }
 
 // Generator - каждые 10 секунд отправляет заказ
-func Generator(writer *kafka.Writer, ctx context.Context) {
+func Generator(writer MessageWriter, ctx context.Context) {
 	log.Println("Kafka producer запущен")
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()

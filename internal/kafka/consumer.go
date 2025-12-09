@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"log"
 
@@ -13,6 +12,13 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/segmentio/kafka-go"
 )
+
+//go:generate go run github.com/vektra/mockery/v2@v2.53.5 --name=MessageReader --output=./kafkamocks --with-expecter
+type MessageReader interface {
+	FetchMessage(ctx context.Context) (kafka.Message, error)
+	CommitMessages(ctx context.Context, msgs ...kafka.Message) error
+	Close() error
+}
 
 // NewReader создает и возвращает настроенный kafka.Reader
 func NewReader(cfg config.KafkaConfig) *kafka.Reader {
@@ -27,7 +33,7 @@ func NewReader(cfg config.KafkaConfig) *kafka.Reader {
 }
 
 // ConsumeMessages читает сообщения из Kafka
-func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache, ctx context.Context) {
+func ConsumeMessages(reader MessageReader, db repository.OrderRepository, cache cache.CacheInterface, ctx context.Context) {
 	log.Println("Kafka consumer запущен")
 	var order models.Order
 	var validate = validator.New()
@@ -67,7 +73,7 @@ func ConsumeMessages(reader *kafka.Reader, db *sql.DB, cache *cache.Cache, ctx c
 			log.Printf("Получили заказ %s из %s", order.OrderUID, order.Delivery.City)
 
 			// проводим транзакцию в бд
-			err = repository.SaveOrder(ctx, db, order)
+			err = db.SaveOrder(ctx, order)
 			if err != nil {
 				log.Println("Ошибка сохранения заказа:", err)
 				continue
