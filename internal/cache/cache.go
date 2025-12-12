@@ -16,6 +16,9 @@ type CacheInterface interface {
 	GetCache(orderUID string) (models.Order, bool)
 }
 
+// Cache - простой in-memory кэш заказов
+// Хранит map (ключ - orderUID) и очередь keys, чтобы заменять самые старые записи при превышении maxLen
+// Защищён RWMutex для потокобезопасного доступа
 type Cache struct {
 	mu     sync.RWMutex
 	Orders map[string]models.Order
@@ -30,9 +33,9 @@ func NewCache() *Cache {
 	}
 }
 
-// Если orderUID нет в кэше, добавляем в keys
-// Таким образом, когда наш кэш достигнет лимита
-// Мы удалим самый старый элемент в keys и сдвинем слайс на 1 позицию
+// SetCache добавляет/обновляет заказ в кэше
+// - Если ключ новый - кладёт его в очередь keys
+// - Если количество ключей превысило maxLen - удаляет самый старый и сдвигает очередь
 func (c *Cache) SetCache(orderUID string, order models.Order) {
 	c.mu.Lock()
 	if _, ok := c.Orders[orderUID]; !ok {
@@ -47,6 +50,9 @@ func (c *Cache) SetCache(orderUID string, order models.Order) {
 	c.mu.Unlock()
 }
 
+// GetCache получает заказ из кэша по orderUID
+// - Блокирует только для чтения RLock
+// - Возвращает (заказ, true) - пустой заказ и false, если нет в кэше
 func (c *Cache) GetCache(orderUID string) (models.Order, bool) {
 	c.mu.RLock()
 	order, ok := c.Orders[orderUID]
@@ -55,7 +61,9 @@ func (c *Cache) GetCache(orderUID string) (models.Order, bool) {
 	return order, ok
 }
 
-// Загружает кэш из базы при старте
+// NewCacheFromDB загружает заказы из БД в кэш при старте
+// Использует OrderRepository - сначала читает базовые поля из orders, затем дочитывает delivery/payment/items
+// Любая ошибка чтения/сканирования - фатальна для инициализации
 func NewCacheFromDB(db repository.OrderRepository) (*Cache, error) {
 	cache := NewCache()
 

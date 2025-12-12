@@ -13,6 +13,11 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestOrderHandler_CacheHit
+// Проверяет сценарий, когда заказ найден в кэше
+// GetCache("id1") возвращает order и true
+// Репозиторий не вызывается
+// Ожидаем ответ 200 и выполнение всех ожиданий моков
 func TestOrderHandler_CacheHit(t *testing.T) {
 	cache := cachemocks.NewCacheInterface(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -31,6 +36,12 @@ func TestOrderHandler_CacheHit(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+// TestOrderHandler_FromDB
+// Проверяет поведение при отсутствии заказа в кэше
+// 1) GetCache - miss
+// 2) GetOrderById - возвращает order
+// 3) SetCache вызывается для сохранения результата
+// Ожидаем ответ 200
 func TestOrderHandler_FromDB(t *testing.T) {
 	cache := cachemocks.NewCacheInterface(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -51,6 +62,10 @@ func TestOrderHandler_FromDB(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+// TestOrderHandler_NotFound
+// Проверяет обработку случая, когда заказа нет ни в кэше, ни в БД
+// Repo.GetOrderById возвращает ошибку
+// Ожидаем 404 Not Found
 func TestOrderHandler_NotFound(t *testing.T) {
 	cache := cachemocks.NewCacheInterface(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -69,6 +84,10 @@ func TestOrderHandler_NotFound(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+// TestOrderHandler_MethodNotAllowed
+// Проверяет, что POST-запрос к /order/{id} запрещён
+// Ожидаем 405
+// Кэш и репозиторий не должны вызываться
 func TestOrderHandler_MethodNotAllowed(t *testing.T) {
 	cache := cachemocks.NewCacheInterface(t)
 	repo := repomocks.NewOrderRepository(t)

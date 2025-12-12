@@ -13,6 +13,14 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// TestConsumeMessages_Success проверяет успешную обработку валидного заказа
+// 1) FetchMessage возвращает валидное сообщение (JSON с корректными полями, включая items)
+// 2) Сообщение парсится и проходит валидацию
+// 3) SaveOrder вызывается с заказом и возвращает nil
+// 4) SetCache вызывается для сохранения в кэш
+// 5) CommitMessages вызывается для подтверждения обработки в Kafka
+// 6) После первой итерации контекст отменяется через Run(cancel), цикл завершается
+// Проверяем, что все ожидания выполнены (AssertExpectations)
 func TestConsumeMessages_Success(t *testing.T) {
 	reader := kafkamocks.NewMessageReader(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -75,6 +83,12 @@ func TestConsumeMessages_Success(t *testing.T) {
 	cache.AssertExpectations(t)
 }
 
+// TestConsumeMessages_Bad проверяет обработку невалидного JSON
+// 1) FetchMessage возвращает сообщение с битым JSON
+// 2) Парсинг или валидация не проходят, сообщение пропускается
+// 3) SaveOrder, SetCache, CommitMessages НЕ вызываются (AssertNotCalled)
+// 4) Цикл завершается через context.Canceled или отмену контекста
+// Проверяем, что побочные операции не произошли
 func TestConsumeMessages_Bad(t *testing.T) {
 	reader := kafkamocks.NewMessageReader(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -122,6 +136,12 @@ func TestConsumeMessages_Bad(t *testing.T) {
 	cache.AssertExpectations(t)
 }
 
+// TestConsumeMessages_BadFetch проверяет обработку ошибки чтения из Kafka
+// 1) FetchMessage возвращает ошибку
+// 2) В ConsumeMessages срабатывает ветка обработки ошибки, сообщение логируется и пропускается
+// 3) SaveOrder, SetCache, CommitMessages НЕ вызываются (ошибка произошла до парсинга)
+// 4) Цикл завершается через context.Canceled
+// Проверяем, что при ошибке чтения ничего не сохраняется и не коммитится
 func TestConsumeMessages_BadFetch(t *testing.T) {
 	reader := kafkamocks.NewMessageReader(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -165,6 +185,13 @@ func TestConsumeMessages_BadFetch(t *testing.T) {
 	cache.AssertExpectations(t)
 }
 
+// TestConsumeMessages_BadItmes проверяет обработку заказа с пустым items
+// 1) FetchMessage возвращает валидный JSON, но items = [] (пустой массив)
+// 2) Парсинг проходит, но валидация падает (требуется min=1 для items)
+// 3) Сообщение пропускается без сохранения
+// 4) SaveOrder, SetCache, CommitMessages НЕ вызываются
+// 5) Цикл завершается корректно
+// Проверяем, что валидация корректно отфильтровывает неполные заказы
 func TestConsumeMessages_BadItmes(t *testing.T) {
 	reader := kafkamocks.NewMessageReader(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -213,6 +240,14 @@ func TestConsumeMessages_BadItmes(t *testing.T) {
 	cache.AssertExpectations(t)
 }
 
+// TestConsumeMessages_BadSaveOrder проверяет обработку ошибки при сохранении в БД
+// 1) FetchMessage возвращает валидное сообщение
+// 2) Парсинг и валидация проходят успешно
+// 3) SaveOrder вызывается, но возвращает ошибку
+// 4) В ConsumeMessages срабатывает обработка ошибки, цикл продолжается с continue
+// 5) SetCache и CommitMessages НЕ вызываются (ошибка произошла до них)
+// 6) Цикл завершается через отмену контекста
+// Проверяем, что при ошибке БД кэш не обновляется и сообщение не коммитится
 func TestConsumeMessages_BadSaveOrder(t *testing.T) {
 	reader := kafkamocks.NewMessageReader(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -262,6 +297,13 @@ func TestConsumeMessages_BadSaveOrder(t *testing.T) {
 	cache.AssertExpectations(t)
 }
 
+// TestConsumeMessages_BadCommit проверяет обработку ошибки при коммите в Kafka
+// 1) FetchMessage возвращает валидное сообщение
+// 2) Парсинг, валидация, SaveOrder и SetCache проходят успешно
+// 3) CommitMessages вызывается, но возвращает ошибку
+// 4) Ошибка логируется, но заказ уже сохранён в БД и кэше
+// 5) Цикл завершается через отмену контекста
+// Проверяем, что при ошибке коммита заказ всё равно сохранён (idempotent)
 func TestConsumeMessages_BadCommit(t *testing.T) {
 	reader := kafkamocks.NewMessageReader(t)
 	repo := repomocks.NewOrderRepository(t)
@@ -318,6 +360,13 @@ func TestConsumeMessages_BadCommit(t *testing.T) {
 	cache.AssertExpectations(t)
 }
 
+// TestConsumeMessages_BadContext проверяет поведение при отменённом контексте до старта
+// 1) Контекст отменяется сразу (cancel() вызывается до запуска ConsumeMessages)
+// 2) ConsumeMessages запускается в горутине с уже отменённым контекстом
+// 3) В цикле select срабатывает ctx.Done(), функция сразу возвращается
+// 4) FetchMessage, SaveOrder, SetCache, CommitMessages НЕ вызываются
+// (или допускается один FetchMessage с context.Canceled)
+// Проверяем корректное завершение при преждевременной отмене контекста
 func TestConsumeMessages_BadContext(t *testing.T) {
 	reader := kafkamocks.NewMessageReader(t)
 	repo := repomocks.NewOrderRepository(t)

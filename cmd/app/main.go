@@ -19,18 +19,18 @@ import (
 )
 
 func main() {
-	// 0. Контекст для корректного завершения
+	// Контекст и wait group для graceful shutdown всех фоновых горутин
 	var wg sync.WaitGroup
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// 1. Загружаем .env и конфиг
+	// Загрузка конфигурации (.env/окружение), без неё приложение не стартует
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("Ошибка загрузки конфигурации:", err)
 	}
 
-	// 2. Соединение с бд
+	// Подключение к PostgreSQL: открываем соединение, проверяем Ping, закрываем при выходе
 	database, err := db.Connect(&cfg.Database)
 	if err != nil {
 		log.Fatal("Не удалось подключиться к базе:", err)
@@ -38,14 +38,16 @@ func main() {
 	defer database.Close()
 	log.Println("Соединение с базой данных установлено")
 
+	// Репозиторий поверх *sql.DB
 	postgres := repository.NewPostgresRepo(database)
 
-	// Подгружаем кэш из бд
+	// Инициализация (загрузка) in-memory кэша из БД при старте
 	orderCache, err := cache.NewCacheFromDB(postgres)
 	if err != nil {
 		log.Fatal("Ошибка загрузки кэша:", err)
 	}
 
+	// Kafka producer: в отдельной горутине генерирует валидные/битые сообщения до остановки контекста
 	writer := kafka.NewWriter(cfg.Kafka)
 	wg.Add(1)
 	go func() {
@@ -53,7 +55,7 @@ func main() {
 		kafka.Generator(writer, ctx)
 	}()
 
-	// 3. Читаем сообщения не блокируя основной поток
+	// Kafka consumer: читает, валидирует, сохраняет в БД и кэш, работает пока не остановится контекст
 	reader := kafka.NewReader(cfg.Kafka)
 	defer reader.Close()
 
@@ -63,10 +65,10 @@ func main() {
 		kafka.ConsumeMessages(reader, postgres, orderCache, ctx)
 	}()
 
-	// 5. Создаем обьект http.Server
+	// HTTP сервер, хендлеры используют кэш и репозиторий
 	srv := server.NewServer(cfg.HttpServer, orderCache, postgres)
 
-	// 6. Запускаем сервер
+	// Запуск HTTP сервера в горутине, фатал при ошибке кроме штатного закрытия
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -75,6 +77,7 @@ func main() {
 		}
 	}()
 
+	// Ожидание сигнала, затем мягкая остановка HTTP и завершение горутин с таймаутом
 	<-ctx.Done()
 	ctxShutdown, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

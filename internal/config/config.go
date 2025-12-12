@@ -7,19 +7,20 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config — конфигурация приложения
+// Config - агрегирует все настройки приложения: HTTP, БД и Kafka
 type Config struct {
 	HttpServer HttpServer     `yaml:"http_server"`
 	Database   DatabaseConfig `yaml:"database"`
 	Kafka      KafkaConfig    `yaml:"kafka"`
 }
 
-// HttpServer — конфигурация сервера
+// HttpServer - конфигурация HTTP-сервера (порт берётся из env/конфига)
 type HttpServer struct {
 	Port int `yaml:"port" env:"HTTP_PORT"`
 }
 
-// DatabaseConfig — конфигурация базы данных
+// DatabaseConfig - настройки подключения к PostgreSQL
+// Поля читаются из переменных окружения (env)
 type DatabaseConfig struct {
 	Host     string `yaml:"host" env:"POSTGRES_HOST"`
 	Port     string `yaml:"port" env:"POSTGRES_PORT"`
@@ -28,7 +29,8 @@ type DatabaseConfig struct {
 	DBName   string `yaml:"dbname" env:"POSTGRES_DB"`
 }
 
-// KafkaConfig — конфигурация Kafka
+// KafkaConfig - настройки брокера Kafka (адрес, топик, group ID)
+// Значения приходят из env/конфига через cleanenv
 type KafkaConfig struct {
 	Broker    string `yaml:"broker" env:"KAFKA_BROKER"`
 	Zookeeper string `yaml:"zookeeper" env:"KAFKA_ZOOKEEPER"`
@@ -37,7 +39,8 @@ type KafkaConfig struct {
 	// Commit    bool   `yaml:"commit"`
 }
 
-// Load — читаем Yaml и ENV, возвращаем конфиг
+// Load - грузит .env и переменные окружения в структуру Config
+// При ошибке возвращает error, вызывающий должен обработать/остановить приложение
 func Load() (*Config, error) {
 	// Читаем переменные окружения из env файла
 	if err := godotenv.Load(".env"); err != nil {

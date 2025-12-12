@@ -3,6 +3,7 @@ module github.com/fathersson/wb-demo-service
 go 1.25.3
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
